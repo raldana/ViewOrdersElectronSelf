@@ -1,0 +1,22 @@
+{
+  "name": "vieworderselectronself",
+  "description": "An application used to view OSS360 orders (i.e. Access/POS invoices, SOs, etc.)",
+  "main": "main.js",
+  "authors": [
+    "Richard Aldana"
+  ],
+  "license": "CC0-1.0",
+  "keywords": [
+    "Electron",
+    "A360",
+    "OSS360"
+  ],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

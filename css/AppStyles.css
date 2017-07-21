@@ -1,0 +1,92 @@
+html, body{
+  height: 100%;
+}
+
+body {
+  font-family: "Lucida Grande", "Segoe UI", Ubuntu, Cantarell, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  width: 100px;
+}
+
+#side-nav {
+  background-color: #000;
+  color: white;
+  padding: 12px;
+  height:100%;
+  width:250px;
+  float:left;
+}
+#side-nav a {
+  font-size: 1.8rem;
+  color:#555
+}
+#side-nav a:hover {
+  color: #52affb
+}
+#main {
+  float:left;
+  padding: 12px;
+  min-width: 500px;
+  border-color: red;
+  padding-top: 5px;
+}
+#viewOrderPane {
+  display: box;
+  position: fixed;
+  top: 0;
+  left: 251px;
+  height: 100%;
+  width: 760px;
+}
+#viewOrderIframe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+}
+#side-nav ul {
+  list-style: none;
+  padding: 20px;
+  margin: 0
+}
+#side-nav li {
+  padding-bottom: 8px;
+}
+#wrapper {
+  width: 100%;
+  min-width: 600px;
+  height: 100%;
+}
+
+#myModal .modal-dialog
+{
+    width: 400px; /* your width */
+}
+
+
+#myJobModal .modal-dialog
+{
+    width: 300px; /* your width */
+}
+
+/* Absolute Center Spinner */
+.loading {
+  position: fixed;
+  z-index: 999;
+  height: 2em;
+  width: 2em;
+  overflow: show;
+  margin: auto;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+

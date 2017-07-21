@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en-us" />
+
+<head>
+    <title>
+        View OSS360 Order
+    </title>
+    <!-- Use Unicode character encoding -->
+    <meta charset="utf-8" />
+    <!-- Tell IE to display content in highest HTML 5 mode available -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Tell mobile browsers to use the device width when rendering -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" media="all" rel="stylesheet" type="text/css" />
+
+    <!-- Custom Styles for this Project -->
+    <link href="css/AppStyles.css" rel="stylesheet" />
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script>window.$ = window.jQuery = require('./js/jquery-1.11.0.min.js');</script>
+   
+
+    <!-- <script src="js/jquery-1.11.0.min.js"></script> -->
+
+    <!-- Bootstrap jQuery -->
+    <script src="js/bootstrap.min.js"></script>
+    
+    <script>require("./js/sendBatch.js")</script>
+</head>
+
+<body>
+    <div id="loginServerAddr" style="display:none" data-value=""></div> 
+    <div id="loginDBName" style="display:none" data-value=""></div> 
+    <div id="loginUserID" style="display:none" data-value=""></div> 
+    <div id="loginUserPswd" style="display:none" data-value=""></div>
+    <div id="submitOrderType" style="display:none" data-value=""></div>
+    <div id="submitOrderNumber" style="display:none" data-value=""></div> 
+
+    <nav class="nav navbar navbar-default navbar-static-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <span class="navbar-brand">View OSS360 Order</span>
+            </div>
+        </div>
+    </nav>
+    <style type="text/css">
+        /* Adjust feedback icon position */
+        
+        #viewOrderForm .selectContainer .form-control-feedback,
+        #viewOrderForm .inputGroupContainer .form-control-feedback {
+            right: -15px;
+        }
+       
+    </style>
+
+    <!-- Order submittal form (db connection too)  -->
+    <form id="viewOrderForm" class="container">
+        <!-- <div class="form-group col-xs-12 col-sm-4 col-md-4 col-lg-3" > -->
+         <div class="form-group" >
+            <div class="row ">
+                <!-- server/db elements -->
+                <div>
+                    <label class="control-label">Server</label>
+                    <input type="text" class="form-control" name="serverAddr" id="serverAddrText" />
+                    <br/>
+                </div>
+                <div>
+                    <label class="control-label">Database</label>
+                    <input type="text" class="form-control" name="dbName" id="dbNameText"/>
+                    <br/>
+                </div>
+                <div>
+                    <div>
+                        <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;">Connect</button>&nbsp;
+                        <label class="control-label" name="connStatusLabel" id="connStatusText" style="color: red">Disconnected</label>
+                    </div>
+                </div>
+
+                <hr/>
+
+                <!-- order type/order number elements -->
+                <div>
+                    <label class="control-label">Order Type</label>
+                    <div class="selectContainer">
+                        <select class="form-control" name="orderType" id="orderTypeSelector">
+                            <option id="optionAccess" value="A">Access Invoice</option>
+                            <option id="optionPOS" value="O">POS Invoice</option>
+                            <option id="optionSO" value="S">SO</option>
+                            <option id="optionPO" value="U">PO</option>
+                        </select>
+                    </div>
+                    <br/>
+                </div>
+                <div>
+                    <label class="control-label">Order Number</label>
+                    <input type="text" class="form-control" name="orderNumber" id="orderNumberText"/>
+                    <br/>
+                </div>
+                <div>
+                    <div>
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;">Submit</button>
+                    </div>
+                </div>
+            </div>  <!-- row...               -->
+        </div>  <!-- form group...      -->
+    </form> <!-- outer container... -->
+
+    <!-- DB connect modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Connect to database</h4>
+                </div>
+                <div class="modal-body">
+                    <label class="control-label">Server:</label>&nbsp;
+                    <label class="control-label" id="serverAddrLabel"></label>
+                    <br/>
+                    <label class="control-label">Database:</label>&nbsp;
+                    <label  class="control-label" id="dbNameLabel"></label>
+                    <br/>
+                    <br/>
+                    <label class="control-label">User id</label>
+                    <input type="text" class="form-control" name="userName"/>
+                    <label class="control-label">Password</label>
+                    <input type="password" class="form-control" name="userPswd"/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Connect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit job modal -->
+    <div class="modal fade" id="myJobModal" tabindex="-1" role="dialog" aria-labelledby="myJobModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myJobModalLabel">Submit job</h4>
+                </div>
+                <div class="modal-body">
+                    <label class="control-label">Job has been sumitted for Order:</label>&nbsp;
+                    <label class="control-label" id="orderSubmittedLabel"></label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" >Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       
+        function connectToDB(){
+            // get the server address and db name
+            var myServerAddr = document.getElementById("serverAddrText").value;
+            var myDBName = document.getElementById("dbNameText").value;
+            
+            // update the text for the db connect modal
+            document.getElementById("dbNameLabel").innerHTML = myDBName;
+            document.getElementById("serverAddrLabel").innerHTML = myServerAddr;
+            
+            // change the connect status text/color
+            var myStatus = document.getElementById("connStatusText");
+            myStatus.style.color = "green";
+            myStatus.innerHTML = "Connected";
+            document.getElementById("connectButton").innerHTML = "Disconnect";
+            
+            // save to document properties
+            document.getElementById("loginServerAddr").setAttribute("data-value", myServerAddr);
+            document.getElementById("loginDBName").setAttribute("data-value", myDBName);
+        }
+        
+        function submitOrder(){
+            // define the electron ipc object for the renderer process
+            var ipcRenderer = require('electron').ipcRenderer;
+            
+            // get the Order Type selector's value and associated text of the option
+            var orderTypeSelector = document.getElementById("orderTypeSelector");
+            var myOrderType = orderTypeSelector.value;
+            var optionText = orderTypeSelector.options[orderTypeSelector.selectedIndex].text;
+            
+            // get the order number
+            var myOrderNumber = document.getElementById("orderNumberText").value;
+
+            // update the text for the job submitted modal
+            document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]"; //myOrderNumber;
+            
+            // save to document properties
+            document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
+            document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
+            
+            // call sql stored proc to insert row to job queue/batches
+            //var sendBatch = require('./js/sendBatch');
+            //sendBatch(myOrderNumber, myOrderType);
+            ipcRenderer.send('sendBatch', myOrderNumber, myOrderType);
+        }
+    </script>
+   
+</body>
