@@ -5,7 +5,7 @@ const electron = require('electron');
 const app = electron.app;
 // Module to create native browser window.
 const BrowserWindow = electron.BrowserWindow;
-
+const sql = require("mssql");
 /*
 // for dev: auto re-loading when source code changes
 require('electron-reload')(__dirname, {
@@ -16,30 +16,51 @@ require('electron-reload')(__dirname, {
 // Module ipc for inter-process communication
 const ipcMain = require('electron').ipcMain;
 
-var isDone = false;
+let isDone = false;
 
-// config
-var Config = require('config-js');
-var config = new Config('./config/config.js');
-
+// get db config
+const Config = require('config-js');
+const config = new Config('./config/config.js');
 
 // javascript files
-var jsconn = require('./js/connfuncs.js');
-var jsbatch = require('./js/batchfuncs.js');
-var jsinvoice = require('./js/invoicefuncs.js');
-var jsorder = require('./js/orderfuncs.js');
-var jsfs = require('./js/fsfuncs.js');
-var jsindex = require('./js/index.js');
+const jsconn = require('./js/connfuncs.js');
+const jsbatch = require('./js/batchfuncs.js');
+const jsinvoice = require('./js/invoicefuncs.js');
+const jsorder = require('./js/orderfuncs.js');
+const jsfs = require('./js/fsfuncs.js');
+const { json } = require('express');
+const jssqlConn = require('./js/sqlconnect.js');
 
 // global shared object
 global.sharedObj = {
     tempFile: null,
     platformOS: null,
     sessionKey: 0,
+    sqlConn: sql,
     sqlConfig: null,
+    sqlConnState: null,
     sqlAuthType: null,
-    okToShutdown: false
+    okToShutdown: false,
+    serverAddress: null,
+    dbName: null,
+    userName: null,
+    userPswd: null,
+    authType: null,
+    dbDriver: "tedious",
+    dbList: []
   };
+
+
+
+// pre-populate server and db if configured
+if (config.get("serverAddress")) {
+  global.sharedObj.serverAddress = config.get("serverAddress");
+  global.sharedObj.dbName = config.get("dbName");
+  global.sharedObj.userName = config.get("userID");
+  global.sharedObj.userPswd = config.get("userPswd");
+  global.sharedObj.authType = "S";
+  global.sharedObj.sqlConnState = jssqlConn.sqlConn();
+}
 
 // get process platform
 const platformOS = process.platform;
@@ -59,13 +80,23 @@ let jobWindow;
 
 function createWindow () {
   // Create the order window.
-  mainWindow = new BrowserWindow({width: 1024, height: 768});
+  mainWindow = new BrowserWindow(
+    { width: 1024, 
+      height: 768,
+      webPreferences: {
+        nodeIntegration: true,
+        enableRemoteModule: true,
+        worldSafeExecuteJavaScript: true//, 
+        //contextIsolation: true
+      }
+    }
+  );
   
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // Open the DevTools.
-  //mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
 
   mainWindow.on('close', function () {
     // close the config and job windows
@@ -152,11 +183,17 @@ app.on('activate', function () {
   }
 });
 
+function fillGlobalDBList(dbList) {
+  global.sharedObj.dbList = dbList;
+  console.log("global DB List: " + JSON.stringify(global.sharedObj.dbList));
+}
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
 // send batch
 ipcMain.on('sendBatch', function(event, orderNumber, orderType, config) {
+  console.log("main.js -on SendBatch: sending order number = " + orderNumber + " , order type = " + orderType);
   jsbatch.sendBatch(event, orderNumber, orderType, config);
 });
 
@@ -194,6 +231,7 @@ ipcMain.on('watchFile', function (event, fname) {
 
 // copy file
 ipcMain.on('copyFile', function (event, sourceFile, targetFile) {
+  console.log("main.copyFile - source = " + sourceFile + " , targetFile = " + targetFile);
   jsfs.copyFile(event, sourceFile, targetFile);
 });
 
@@ -218,3 +256,14 @@ ipcMain.on('updateSessionKey', function (event, sessionKey) {
 ipcMain.on('checkForValidOrder', function (event, orderNumber, orderType, config) {
   jsinvoice.checkForValidOrder(event, orderNumber, orderType, config)
 });
+
+// populate db selector
+ipcMain.on('populateDBSelector', function (event, config) {
+  jsconn.getDBList(event, config);
+})
+
+// update global db list
+ipcMain.on("fillGlobalDBList", function(event, dbList) {
+  console.log(dbList);
+  fillGlobalDBList(dbList);
+})

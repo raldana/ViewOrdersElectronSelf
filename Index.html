@@ -5,6 +5,7 @@
     <title>
         View OSS360 Order
     </title>
+    <!-- <meta http-equiv="Content-Security-Policy" content="script-src 'self';"> -->
     <!-- Use Unicode character encoding -->
     <meta charset="utf-8" />
     <!-- Tell IE to display content in highest HTML 5 mode available -->
@@ -12,11 +13,15 @@
     <!-- Tell mobile browsers to use the device width when rendering -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+    <!-- self contained security policy
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+-->
     <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" media="all" rel="stylesheet" type="text/css" />
 
     <!-- Custom Styles for this Project -->
     <link href="css/AppStyles.css" rel="stylesheet" />
+    <link href="css/modalwindows.css" rel="stylesheet" />
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script>window.$ = window.jQuery = require('./js/jquery-2.2.3.min.js');</script>
@@ -27,6 +32,9 @@
     
     <!-- script for this -->
     <script src="js/index.js"></script>
+
+    <!-- Insert this line after script imports -->
+    <!-- <script>if (window.module) module = window.module;</script> -->
     
     
 </head>
@@ -34,7 +42,7 @@
 <body>
     <div id="loginServerAddr" style="display:none" data-value=""></div> 
     <div id="loginDBName" style="display:none" data-value="master"></div>
-    <div id="loginAuthType" style="display:none" data-value=""></div>
+    <div id="loginAuthType" style="display:none" data-value="S"></div>
     <div id="loginUserID" style="display:none" data-value=""></div> 
     <div id="loginUserPswd" style="display:none" data-value=""></div>
     <div id="submitOrderType" style="display:none" data-value="A"></div>
@@ -43,7 +51,7 @@
     <div id="dbDriver" style="display:none" data-value="tedious"></div>
     <!-- <div id="dbDriver" style="display:none" data-value="msnodesql"></div> -->
 
-    <!-- Order submittal form (db connection too)  -->
+    <!-- Main form (landing page)  -->
     <div id="wrapper">
         <div id="side-nav">
             <div >
@@ -53,13 +61,13 @@
                     <input type="text" class="form-control" name="serverAddr" id="serverAddrText" autofocus/>
                     <br/>
                 </div>
-<!--
+
                 <div>
                     <label class="control-label">Database</label>
                     <input type="text" class="form-control" name="dbName" id="dbNameText"/>
                     <br/>
                 </div>
--->
+
                 <div>
                     <div>
                         <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;">Connect</button>&nbsp;
@@ -69,9 +77,9 @@
                 </div>
 
                 <hr/>
-
                 <!-- db dropdown -->
-                <div>
+
+                <div style="display: none;">
                     <label class="control-label">Database</label>
                     <div class="selectContainer">
                         <select class="form-control" name="dbSelector" id="dbSelector">
@@ -81,7 +89,7 @@
                     <br/>
                 </div>
 
-                <hr/>
+                <hr style="display: none;"/>
 
                 <!-- order type/order number elements -->
                 <div>
@@ -164,8 +172,8 @@
 
     <!-- Submitted job modal -->
     <div class="modal fade" id="myJobModal" tabindex="-1" role="dialog" aria-labelledby="myJobModalLabel">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
+        <div class="mymodal" role="document">
+            <div class="mymodal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     <h4 class="modal-title" id="myJobModalLabel">Submit job</h4>
@@ -181,27 +189,27 @@
                     <div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>
                     <br/>
                 </div>
-<!--
-                <div class="modal-footer">
-                    <div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>
-                </div>
--->
             </div>
         </div>
     </div>
 
     <script>
-        $(document).ready(function() {
-            var ipcIndexRenderer = require('electron').ipcRenderer;
+        //ipcRenderer.send("consoleLog", "document ready first");
+        document.getElementById("dbNameText").disabled = true;
+        populateServerData();
+        
+        var callBack = () => {
+
+            let ipcIndexRenderer = require('electron').ipcRenderer;
 
             var hasOwnProperty = Object.prototype.hasOwnProperty;
 
-            //document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
-            //document.getElementById("dbNameText").addEventListener("blur", enableDisableConnect);
+        //    document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
+            document.getElementById("dbNameText").addEventListener("blur", enableDisableSubmit);
             document.getElementById("dbSelector").addEventListener("change", saveDBName);
             document.getElementById("orderNumberText").addEventListener("blur", saveOrderNumber);
             document.getElementById("orderTypeSelector").addEventListener("change", saveOrderType);
-            document.getElementById("connectButton").addEventListener("keypress", connectToDB);
+            //document.getElementById("connectButton").addEventListener("keypress", connectToDB);
             document.getElementById("authTypeSelector").addEventListener("change", saveAuthType);
 
             // set Submit button disabled at startup
@@ -210,15 +218,11 @@
             // save OS to document variable
             saveOS();
 
-            // set autofocus on modal dialogs
-            $('.modal').on('shown.bs.modal', function() {
-                $(this).find('[autofocus]').focus();
-            });
-            
             // resize PDF viewer div when window is resized
-            $( window ).resize(function() {
+//            $( window ).resize(function() {
+            window.addEventListener("resize", function() {
                 resizePDFViewer();
-            });
+            }, true);
 
             // zero fill a value
             function paddy(n, p, c) {
@@ -292,28 +296,32 @@
             };
 
             // enable/disable Connect button
+/*
             function enableDisableConnect() {
                 var myServerAddr = document.getElementById("serverAddrText").value;
                 var myDBName = document.getElementById("dbNameText").value;
-
-                if (myServerAddr && myDBName) {
-                    $('#connectButton').prop('disabled', false);  
+                if (myServerAddr) {// && myDBName) {
+                    //$('#connectButton').prop('disabled', false);  
+                    document.getElementById("connectButton").disabled = false;
                 } else {
-                    $('#connectButton').prop('disabled', true);
+                    //$('#connectButton').prop('disabled', true);
+                    document.getElementById("connectButton").disabled = true;
                 };
             };
-
+*/
             // enable/disable Submit button
             function enableDisableSubmit() {
                 var myServerAddr = document.getElementById("serverAddrText").value;
-                var myDBName = document.getElementById("dbSelector").value;
+                var myDBName = document.getElementById("dbNameText").value;
                 var orderType = document.getElementById("orderTypeSelector").value;
                 var orderNumber = document.getElementById("orderNumberText").value;
 
                 if (myServerAddr && myDBName && orderType && orderNumber) {
-                    $('#submitButton').prop('disabled', false);  
+                    //$('#submitButton').prop('disabled', false);
+                    document.getElementById("submitButton").disabled = false;
                 } else {
-                    $('#submitButton').prop('disabled', true);
+                    //$('#submitButton').prop('disabled', true);
+                    document.getElementById("submitButton").disabled = true;
                 };
             };
             
@@ -322,21 +330,39 @@
                 var authType = document.getElementById("loginAuthType").getAttribute("data-value");
 
                 if (authType == 'S') {
-                    $('#userNameText').prop('disabled', false); 
-                    $('#userPswdText').prop('disabled', false);  
+//                    $('#userNameText').prop('disabled', false); 
+//                    $('#userPswdText').prop('disabled', false);
+                    document.getElementById("userNameText").disabled = false;
+                    document.getElementById("userPswdText").disabled = false;
                 } else {
-                    $('#userNameText').prop('disabled', true); 
-                    $('#userPswdText').prop('disabled', true);  
+//                    $('#userNameText').prop('disabled', true); 
+//                    $('#userPswdText').prop('disabled', true);  
+                    document.getElementById("userNameText").disabled = true;
+                    document.getElementById("userPswdText").disabled = true;
                 };
             };
 
             // resize pdf viewer if window is resized
             function resizePDFViewer() {
-                var width = $(window).width()-251-25; 
-                $("#viewOrderPane").width(width);
+                //var width = $(window).width()-251-25;
+                var width = window.outerWidth-(251-25); 
+                //$("#viewOrderPane").width(width);
+                document.getElementById("viewOrderPane").width = width;
             };
 
-        });
+        }
+
+
+        if (
+            document.readyState === "complete" ||
+            (document.readyState !== "loading" && !document.documentElement.doScroll)
+        ) {
+            callBack();
+        } else {
+            document.addEventListener("DOMContentLoaded", callBack);
+        }
+
+
 
     </script>
    

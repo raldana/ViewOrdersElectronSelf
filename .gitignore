@@ -1,1 +1,9 @@
+#directories
+bower_components
 node_modules
+dist
+web
+
+#files
+*.tgz
+*.log
