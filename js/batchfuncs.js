@@ -30,7 +30,6 @@ function sendBatch(event, orderNo, orderType, config) {
   var jobString = '';
   callingEvent = event;
   dbConfig = config;
-  event.sender.send('consoleLog', 'order number in sendBatch is: ' + orderNo + '\n');
 
   sql.connect(config, err => {
 
