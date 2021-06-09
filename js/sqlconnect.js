@@ -10,9 +10,11 @@ function buildConfig() {
     let authType = global.sharedObj.authType;
     let userName = global.sharedObj.userName;
     let passwordText = global.sharedObj.userPswd;
-    let serverName = global.sharedObj.serverAddress;
+    let serverName = global.sharedObj.sqlServerAddress;
     let dbName = global.sharedObj.dbName;
     let dbDriver = global.sharedObj.dbDriver;
+    let connectionTimeOut = global.sharedObj.connectionTimeOut;
+    let connectEncrypt = global.sharedObj.connectEncrypt;
 
     if (authType == "W") {
             sqlConfig = {
@@ -25,15 +27,16 @@ function buildConfig() {
             };
         
     } else {
-        if (userName && passwordText && serverName && dbName) {
+        if (userName && serverName && dbName) {
             sqlConfig = {
                 user: userName,
                 password: passwordText,
                 server: serverName,
                 database: dbName,
-                encrypt: true,
+                encrypt: connectEncrypt,
+                connectionTimeout: connectionTimeOut,
                 "options": {
-                    "enableArithAbort": true
+                    "enableArithAbort": true,
                 }
             };
 

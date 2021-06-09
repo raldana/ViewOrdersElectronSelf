@@ -1,10 +1,10 @@
-var chokidar = require('chokidar');
-var fs = require('fs');
-var fsPath = require('path');
+const chokidar = require('chokidar');
+const fs = require('fs');
+const fsPath = require('path');
 
-var fileCopyDelaySeconds = 2;
+let fileCopyDelaySeconds = 2;
 
-var watchFile = function(event, watchedFile) {
+const watchFile = function(event, watchedFile) {
     var watchedBaseName = fsPath.basename(watchedFile);
     var folder = require('path').dirname(watchedFile);
 
@@ -38,42 +38,31 @@ var watchFile = function(event, watchedFile) {
     var log = console.log.bind(console);
     // Add event listeners.
     watcher
-    .on('add', function(path) {
-        fs.stat(path, function (err, stat) {
-            if (err){
-                console.log('Error watching file for copy completion. ERR: ' + err.message);
-                console.log('Error file not processed. PATH: ' + path);
-            } else {
-                //console.log('File copy started...');
-                setTimeout(checkFileCopyComplete, fileCopyDelaySeconds*1000, path, stat, event);
-                //console.log('File copy completed...');
-            }
-        });
-
-        event.sender.send('watchFileReply', path);
-        watcher.unwatch(path);
-        watcher.close();
+    .on('all', function(fsevent, path) {
+        if (fsevent == "add" || fsevent == "change") {
+            fs.stat(path, function (err, stat) {
+                if (err){
+                    console.log('Error watching file for copy completion. ERR: ' + err.message);
+                    console.log('Error file not processed. PATH: ' + path);
+                } else {
+                    setTimeout(checkFileCopyComplete, fileCopyDelaySeconds*1000, path, stat, event);
+                    watcher.unwatch(path);
+                    watcher.close();
+                    //console.log('File copy completed...');
+                }
+            });
+            event.sender.send('watchFileReply', path);
+        }
     })
 
-/*
-    .once('change', function(path) {
-        event.sender.send('watchFileReply', path);
-        watcher.close();
-    });
-*/
     // Watch new files.
     watcher.add(watchedFile);
     
     // Get list of actual paths being watched on the filesystem
     var watchedPaths = watcher.getWatched();
-
-    // Stop watching.
-    // watcher.close();
-
 };
 
-var copyFile = function (event, source, target) {
-  //console.log('completed copying file (' + source + ') to (' + target + ')');
+const copyFile = function (event, source, target) {
   var cbCalled = false;
   
   var rd = fs.createReadStream(source);
@@ -109,10 +98,16 @@ var copyFile = function (event, source, target) {
 
 };
 
-var deleteFile = function (event, target) {
+const deleteFile = function (event, target) {
     if (target) {
         try {
-            fs.unlinkSync(target);
+            if (fs.existsSync(target)) {
+                console.log("fsfuncs.deleteFile() Deleting file " + target + "..." );
+                fs.unlinkSync(target);
+                console.log("file " + target + " deleted");
+            } else {
+                console.log("fsfuncs.deleteFile() " + target + "doesn't exist" +"\n");
+            }
         } catch (err) {
             if (err == 'EPERM') {
                 console.log('could not delete file ' + target + '\n');
@@ -131,7 +126,7 @@ var deleteFile = function (event, target) {
     };
 };
 
-var fileExists = function(event, target) {
+const fileExists = function(event, target) {
     var isExists = false;
 
     fs.stat(target, function(err, fileStat) {
@@ -159,15 +154,11 @@ function checkFileCopyComplete(path, prev, event) {
             if (err.code != 'ENOENT') {
                 console.log(" error - checkFileCopyComplete() - " + err.code)
             }
-            //throw err;
         }
-        if ((stat) && (stat.mtime.getTime() === prev.mtime.getTime())) {
-            console.log('File copy complete => beginning processing');
-            event.sender.send('watchFileReply', path);
-
-            //------------------------------------- 
-            // CALL A FUNCTION TO PROCESS FILE HERE
-            //-------------------------------------
+        if (stat && prev) {
+            if (stat.mtime.getTime() === prev.mtime.getTime()) {
+                event.sender.send('watchFileReply', path);
+            }
         }
         else {
             setTimeout(checkFileCopyComplete, fileCopyDelaySeconds*1000, path, stat, event);

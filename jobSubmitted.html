@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-us" />
+
+<head>
+    <title>
+        Submitted Job
+    </title>
+
+    <!-- script for this -->
+    <!-- <script src="js/jobSubmitted.js"></script> -->
+    <script src="preload.js"></script>
+
+       
+</head>
+
+<body>
+    <div>
+        <div>
+            <label class="control-label" id="orderMessageLabel">Job has been submitted for Order:</label>&nbsp;
+            <br/>
+            <br/>
+            <label class="control-label" id="waitingforOrderLabel">waiting for order...</label>
+            <br/>
+            <br/>
+            <div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>
+            <br/>
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" id="cancelButton" onclick="cancelJob(); return false;">Cancel</button>&nbsp;
+        </div>
+        <br/>
+    </div>
+    <hr/>
+    <div id="logWindow">
+        <pre id="logger"></pre>
+    </div>
+
+    <script>
+        var callBack = () => {
+            function updateOrderLabel() {
+            let orderNumber = remote.getGlobal('sharedObj').orderNumber;
+            let orderLabel = document.getElementById("orderMessageLabel");
+            orderLabel.innerHTML = "Job submitted for order: " + orderNumber;
+            }
+
+            updateOrderLabel();
+
+        }
+
+        if (
+            document.readyState === "complete" ||
+            (document.readyState !== "loading" && !document.documentElement.doScroll)
+        ) {
+            callBack();
+        } else {
+            document.addEventListener("DOMContentLoaded", callBack);
+        }
+
+    </script>
+    
+</body>
+

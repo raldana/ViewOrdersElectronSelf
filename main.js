@@ -1,5 +1,5 @@
 'use strict';
-
+process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 const electron = require('electron');
 // Module to control application life.
 const app = electron.app;
@@ -16,6 +16,9 @@ require('electron-reload')(__dirname, {
 // Module ipc for inter-process communication
 const ipcMain = require('electron').ipcMain;
 
+// misc
+const path = require("path");
+
 let isDone = false;
 
 // get db config
@@ -30,6 +33,8 @@ const jsorder = require('./js/orderfuncs.js');
 const jsfs = require('./js/fsfuncs.js');
 const { json } = require('express');
 const jssqlConn = require('./js/sqlconnect.js');
+const jsjobSubmitted = require('./js/jobSubmitted.js');
+const jsjlogFuncs = require('./js/logFuncs.js');
 
 // global shared object
 global.sharedObj = {
@@ -41,24 +46,36 @@ global.sharedObj = {
     sqlConnState: null,
     sqlAuthType: null,
     okToShutdown: false,
-    serverAddress: null,
+    sqlServerAddress: null,
     dbName: null,
     userName: null,
     userPswd: null,
     authType: null,
     dbDriver: "tedious",
+    docOriginServerAddress: null,
+    connectionTimeOut: 30000,
+    waitingForFile: false,
+    orderNumber: null,
+    connectEncrypt: true,
+    iFrameHeight: null,
+    iFrameWidth: null,
+    iFrameTop: null,
+    iFrameLeft: null,
     dbList: []
   };
 
 
 
 // pre-populate server and db if configured
-if (config.get("serverAddress")) {
-  global.sharedObj.serverAddress = config.get("serverAddress");
+if (config.get("sqlServerAddress")) {
+  global.sharedObj.sqlServerAddress = config.get("sqlServerAddress");
   global.sharedObj.dbName = config.get("dbName");
   global.sharedObj.userName = config.get("userID");
   global.sharedObj.userPswd = config.get("userPswd");
+  global.sharedObj.docOriginServerAddress = config.get("docOriginServerAddress");
+  global.sharedObj.connectionTimeOut = config.get("connectionTimeOut");
   global.sharedObj.authType = "S";
+  global.sharedObj.connectEncrypt = config.get("encrypt");
   global.sharedObj.sqlConnState = jssqlConn.sqlConn();
 }
 
@@ -77,6 +94,7 @@ global.sharedObj.platformOS = platformOS;
 let mainWindow;
 let configWindow;
 let jobWindow;
+let jobSubmittedWindow;
 
 function createWindow () {
   // Create the order window.
@@ -86,8 +104,10 @@ function createWindow () {
       webPreferences: {
         nodeIntegration: true,
         enableRemoteModule: true,
-        worldSafeExecuteJavaScript: true//, 
-        //contextIsolation: true
+        worldSafeExecuteJavaScript: true, 
+        contextIsolation: false,
+        preload: path.join(__dirname, "preload.js"),
+        plugins: true
       }
     }
   );
@@ -96,7 +116,7 @@ function createWindow () {
   mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  //mainWindow.webContents.openDevTools()
 
   mainWindow.on('close', function () {
     // close the config and job windows
@@ -108,11 +128,25 @@ function createWindow () {
       jobWindow.close();
     }
 
+    if (jobSubmittedWindow) {
+      jobSubmittedWindow.close();
+    }
+
     // delete any temp files we created
     var tmpFile = global.sharedObj.tempFile
     if (tmpFile) {
         jsfs.deleteFile(null, tmpFile);
     };
+
+    // shutdown the file watcher
+    if (jsfs.watcher) {
+      if (jsfs.watcher.watchFile) {
+        console.log("closing file watchers..." + "\n");
+        jsfs.watcher.watchFile.close();
+      }
+    }
+
+    // let us know we are shutting down
     console.log("shutting down..." + "\n");
   });
 
@@ -157,6 +191,61 @@ function createExtraWindows() {
   });
 }
 
+function createJobSubmittedWindow(orderNumber) {
+  // Create the job submitted window.
+  let winBounds = mainWindow.getContentBounds();
+  console.log("windBounds: " + JSON.stringify(winBounds));
+  let winHeight = winBounds.height;
+  let winWidth = winBounds.weight;
+  jobSubmittedWindow = new BrowserWindow(
+    { parent: mainWindow,
+      modal: false,
+      //width: mainWindow.clientWidth, 
+      //height: 768, //mainWindow.offsetHeight,
+      center: false,
+      //x: mainWindow.left, //global.sharedObj.frameLeft,
+      //y: global.sharedObj.frameTop,
+      show: false,
+      frame: false,
+      useContentSize: true,
+      webPreferences: {
+        nodeIntegration: true,
+        enableRemoteModule: true,
+        worldSafeExecuteJavaScript: true, 
+        contextIsolation: false,
+        preload: path.join(__dirname, "preload.js"),
+        plugins: true,
+        v8CacheOptions: "none"
+      }
+    }
+  );
+  //jobSubmittedWindow.setMenu(null);
+
+  // and load the job.html of the app.
+  jobSubmittedWindow.loadURL(`file://${__dirname}/jobSubmitted.html`);
+  
+  jobSubmittedWindow.once("ready-to-show", () => {
+    let winBounds = mainWindow.getContentBounds();
+    jobSubmittedWindow.setSize(winBounds.width-250-15, winBounds.height-20);
+    jobSubmittedWindow.setPosition(winBounds.x+250, winBounds.y);
+    jobSubmittedWindow.show();
+  })
+
+  // Emitted when the window is closed.
+  jobSubmittedWindow.on('closed', function () {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    jobSubmittedWindow = null;
+  });
+}
+
+function closeJobSubmittedWindow() {
+  if (jobSubmittedWindow) {
+    jobSubmittedWindow.close();
+  }
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -187,6 +276,7 @@ function fillGlobalDBList(dbList) {
   global.sharedObj.dbList = dbList;
   console.log("global DB List: " + JSON.stringify(global.sharedObj.dbList));
 }
+
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
@@ -242,8 +332,9 @@ ipcMain.on('deleteFile', function (event, targetFile) {
 
 // update global temp file name
 ipcMain.on('updateTempFileName', function (event, tempFile) {
-  var newFile = __dirname + '\\pdf.js\\web\\' + require('path').basename(tempFile);
-  global.sharedObj.tempFile = newFile;
+  //var newFile = __dirname + '\\web\\' + require('path').basename(tempFile);
+  //global.sharedObj.tempFile = newFile;
+  global.sharedObj.tempFile = tempFile;
 });
 
 // update global temp file name
@@ -266,4 +357,36 @@ ipcMain.on('populateDBSelector', function (event, config) {
 ipcMain.on("fillGlobalDBList", function(event, dbList) {
   console.log(dbList);
   fillGlobalDBList(dbList);
+})
+
+// show job submitted modal
+ipcMain.on("showJobSubmitted", function(event) {
+  createJobSubmittedWindow();
+})
+
+// show job submitted modal
+ipcMain.on("closeJobSubmittedWindow", function(event) {
+  closeJobSubmittedWindow();
+})
+
+// show console log statements to browser windows
+//ipcMain.on("consoleLogThis", function(event, logMessage) {
+//  jsjlogFuncs.logThis(event, logMessage);
+//})
+
+// set frame dimensions
+ipcMain.on("setFrameDimensions", function(event, frameHeight, frameWidth, frameTop, frameLeft) {
+  global.sharedObj.iFrameHeight = frameHeight;
+  global.sharedObj.iFrameWidth = frameWidth;
+  global.sharedObj.iFrameTop = frameTop;
+  global.sharedObj.iFrameLeft = frameLeft;
+  console.log("frame height: " + frameHeight + 
+      ", width: " + frameWidth + ", top: " + frameTop + ", left: " + frameLeft);
+  //createJobSubmittedWindow();
+})
+
+// cancel current job
+ipcMain.on("cancelJob", function(event) {
+  jsjobSubmitted.cancelJob();
+  closeJobSubmittedWindow();
 })

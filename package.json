@@ -36,6 +36,6 @@
     "msnodesqlv8": "^2.0.8",
     "mssql": "^6.2.3",
     "pdf-view": "^1.0.1",
-    "remote": "^0.0.5"
+    "remote": "^0.2.6"
   }
 }

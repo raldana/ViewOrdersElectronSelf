@@ -34,9 +34,8 @@
     <script src="js/index.js"></script>
 
     <!-- Insert this line after script imports -->
-    <!-- <script>if (window.module) module = window.module;</script> -->
-    
-    
+    <script>if (window.module) module = window.module;</script>
+       
 </head>
 
 <body>
@@ -58,7 +57,7 @@
                 <!-- server -->
                 <div>
                     <label class="control-label">Server</label>
-                    <input type="text" class="form-control" name="serverAddr" id="serverAddrText" autofocus/>
+                    <input type="text" class="form-control" name="serverAddr" id="serverAddrText"/>
                     <br/>
                 </div>
 
@@ -70,7 +69,7 @@
 
                 <div>
                     <div>
-                        <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;">Connect</button>&nbsp;
+                        <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;">Change</button>&nbsp;
                         <label class="control-label" name="connStatusLabel" id="connStatusText" style="color: red">Disconnected</label>
                     </div>
                     <br/>
@@ -105,14 +104,25 @@
                     <br/>
                 </div>
                 <div>
-                    <label class="control-label">Order Number</label>
-                    <input type="text" class="form-control orderNumber" name="orderNumber" id="orderNumberText" required/>
+                    <label class="control-label">Order Number</label> &nbsp;
+                    <label class="control-label" name="validOrderLabel" id="validOrderText" style="color: red"></label>
+                    <input type="text" class="form-control orderNumber" name="orderNumber" id="orderNumberText" autofocus required/>
+                    <br/>
+                </div>
+                <div>
+                    <label class="control-label">Detail Level</label>
+                    <div class="selectContainer">
+                        <select class="form-control" name="detailLevel" id="detailLevelSelector">
+                            <option id="optionOriginal" value="O">Original Detail</option>
+                            <option id="optionMax" value="M">Max Detail</option>
+                        </select>
+                    </div>
                     <br/>
                 </div>
                 <div>
                     <div>
-                        <button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;">Submit</button>&nbsp;
-                        <label class="control-label" name="validOrderLabel" id="validOrderText" style="color: red"></label>
+                        <!--<button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;">Submit</button>&nbsp; -->
+                        <button type="button" class="btn btn-primary" id="submitButton" onclick="submitOrder(); return false;">Submit</button>&nbsp;
                     </div>
                 </div>
             </div>  <!-- row...               -->
@@ -121,8 +131,10 @@
 
    
     <div id="viewOrderPane" class="container">
-       <!-- <iframe id=viewOrderIframe src="web/viewer.html"></iframe> -->
-       <iframe id=viewOrderIframe src="" display:none></iframe>
+        <!-- <webView id=viewOrderIframe src="" nodeintegrationinsubframes></webView> -->
+        <iframe id=viewOrderIframe src=""></iframe>
+        <!-- <iframe id=viewOrderIframe src="web/viewer.html"></iframe> -->
+       <!--<iframe id=viewOrderIframe src="C:/Users/Rick/Downloads/0000000001-00000027508-001-000015865-20190925_0.pdf" display:block></iframe>-->
     </div>
 
     <!-- DB connect modal -->
@@ -135,7 +147,8 @@
                 </div>
                 <div class="modal-body">
                     <label class="control-label">Server:</label>&nbsp;
-                    <label class="control-label" id="serverAddrLabel"></label>
+                    <input type="text" class="form-control" name="newServerName" id="newServerNameText"/>
+                    <label class="control-label" style="display: none;" id="serverAddrLabel" autofocus></label>
                     <br/>
 <!--                    
 
@@ -143,20 +156,21 @@
                     <label class="control-label">Database:</label>&nbsp;
                     <label  class="control-label" id="dbNameLabel"></label>
                     <br/>
--->
                     <br/>
+-->
 
+<!--
                     <label class="control-label" style="display:none" id="authSelectorLabel">Authentication</label>
                     <div class="selectContainer"  style="display:none" id="authSelector">
-                        <select class="form-control" name="authType" id="authTypeSelector" autofocus>
-                            <option id="optionWinAuth" value="W">Windows Authentication</option>
+                        <select class="form-control" style="display: none;" name="authType" id="authTypeSelector" autofocus>
                             <option id="optionSQLAuth" value="S">SQL Server</option>
+                            <option id="optionWinAuth" value="W">Windows Authentication</option>
                         </select>
                     </div>
                     <br  style="display:none" id="authSelectorBreak"/>
-                    
+-->                    
                     <label class="control-label">User id</label>
-                    <input type="text" class="form-control" name="userName" id="userNameText" autofocus/>
+                    <input type="text" class="form-control" name="userName" id="userNameText"/>
                     <br/>
 
 
@@ -195,21 +209,35 @@
 
     <script>
         //ipcRenderer.send("consoleLog", "document ready first");
+        document.getElementById("serverAddrText").disabled = true;
         document.getElementById("dbNameText").disabled = true;
         populateServerData();
-        
         var callBack = () => {
+            saveFrameDimensions(document.getElementById( 'viewOrderPane' ));
+            //let ipcIndexRenderer = require('electron').ipcRenderer;
+            // logger
+            ipcRenderer.on('logThisReply', function(event, logMsg) {
+                logMsgs.push(logMsg);
+                ipcRenderer.send('consoleLog', 'jsindex.SubmitOrder: got logThisReply - ' + logMsg);
+                ipcRenderer.send('consoleLog', 'jsindex.SubmitOrder: got logThisReply - logMsgs' + logMsgs);
+                let topdoc = document; //.document;
+                ipcRenderer.send('consoleLog', 'jsindex.SubmitOrder: got logThisReply - topdoc ' + JSON.stringify(topdoc));
+                let doc = document.getElementById('viewOrderIframe'); //.document;
+                ipcRenderer.send('consoleLog', 'jsindex.SubmitOrder: got logThisReply - doc ' + JSON.stringify(doc));
+                let content = doc.contentWindow.document;
+                ipcRenderer.send('consoleLog', 'jsindex.SubmitOrder: got logThisReply - content ' + JSON.stringify(content));
+                let logWindow = doc.contentWindow.document.getElementById("logWindow");
+                let logger = logWindow.getElementById("logger");
+                logger.insertAdjacentHTML("afterbegin", logMsg);
+            })
 
-            let ipcIndexRenderer = require('electron').ipcRenderer;
 
             var hasOwnProperty = Object.prototype.hasOwnProperty;
 
-        //    document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
             document.getElementById("dbNameText").addEventListener("blur", enableDisableSubmit);
             document.getElementById("dbSelector").addEventListener("change", saveDBName);
             document.getElementById("orderNumberText").addEventListener("blur", saveOrderNumber);
             document.getElementById("orderTypeSelector").addEventListener("change", saveOrderType);
-            //document.getElementById("connectButton").addEventListener("keypress", connectToDB);
             document.getElementById("authTypeSelector").addEventListener("change", saveAuthType);
 
             // set Submit button disabled at startup
@@ -219,52 +247,77 @@
             saveOS();
 
             // resize PDF viewer div when window is resized
-//            $( window ).resize(function() {
-            window.addEventListener("resize", function() {
-                resizePDFViewer();
-            }, true);
+            //window.addEventListener("resize", function() {
+            //    resizePDFViewer();
+            //}, true);
+
+            window.addEventListener('resize', function(e) {
+                let iFrame = document.getElementById( 'viewOrderPane' );
+                resizePDFViewer( iFrame );
+
+                // or, to resize all iframes:
+                //var iframes = document.querySelectorAll("iframe");
+                //for( var i = 0; i < iframes.length; i++) {
+                //    resizePDFViewer( iframes[i] );
+                //}
+            } );            
+                    // resize pdf viewer if window is resized
+            function resizePDFViewer(iFrame) {
+                let paneWidth = window.outerWidth-(250); 
+                let parentPane = iFrame;
+                let childFrame = document.getElementById('viewOrderIframe');
+                parentPane.style.width  = paneWidth + 'px';
+                childFrame.style.width = paneWidth-10 + 'px';
+                saveFrameDimensions(iFrame);
+
+            };
+
 
             // zero fill a value
             function paddy(n, p, c) {
-                var pad_char = typeof c !== 'undefined' ? c : '0';
-                var pad = new Array(1 + p).join(pad_char);
+                let pad_char = typeof c !== 'undefined' ? c : '0';
+                let pad = new Array(1 + p).join(pad_char);
                 return (pad + n).slice(-pad.length);
             };
 
             // save the order number
             function saveDBName() {
-                var dbName = document.getElementById("dbSelector").value;
+                let dbName = document.getElementById("dbSelector").value;
                 document.getElementById("loginDBName").setAttribute("data-value", dbName);
             };
 
             // save the order number
             function saveOrderNumber() {
-                var myOrderNumber = document.getElementById("orderNumberText").value;
-                var myOrderType = document.getElementById("orderTypeSelector").value;
-                var prevOrderNumber = document.getElementById("loginAuthType").getAttribute("data-value");
-                
-                // format the number if an invoice number
-                if (myOrderType == 'A' || myOrderType == "O") {
-                    if (myOrderNumber) {
-                        myOrderNumber = formatOrderNumber(myOrderNumber, myOrderType);
+                let myOrderNumber = document.getElementById("orderNumberText").value;
+                let myOrderType = document.getElementById("orderTypeSelector").value;
+                let prevOrderNumber = document.getElementById("loginAuthType").getAttribute("data-value");
+
+                if (myOrderNumber) {
+                    // format the number if an invoice number
+                    if (myOrderType == 'A' || myOrderType == "O") {
+                        if (myOrderNumber) {
+                            myOrderNumber = formatOrderNumber(myOrderNumber, myOrderType);
+                        };
                     };
-                };
 
-                // check if number is valid
-                checkOrderValidity(myOrderNumber, myOrderType);
-                
-                // save the order number/order type to our global properties
-                document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
-                document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
+                    // check if number is valid
+                    checkOrderValidity(myOrderNumber, myOrderType);
+                    
+                    // save the order number/order type to our global properties
+                    document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
+                    document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
 
-                // enable or disable the Submit button as appropriate
-                enableDisableSubmit();
+                    // enable or disable the Submit button as appropriate
+                    enableDisableSubmit();
+                } else {
+                    document.getElementById("validOrderText").innerHTML = "";
+                }
             };
 
             // re-format order number (add leading zeroes if order number is less than 9 chars)
             function formatOrderNumber(orderNumber, orderType) {
-                var myOrderType = orderType;
-                var myOrderNumber = orderNumber;
+                let myOrderType = orderType;
+                let myOrderNumber = orderNumber;
                 
                 if (myOrderType == 'A' || myOrderType == "O") {
                   myOrderNumber = paddy(myOrderNumber, 9, '0');
@@ -276,8 +329,8 @@
 
             // save the order type
             function saveOrderType() {
-                var orderTypeSelector = document.getElementById("orderTypeSelector");
-                var myOrderType = orderTypeSelector.value;
+                let orderTypeSelector = document.getElementById("orderTypeSelector");
+                let myOrderType = orderTypeSelector.value;
                 document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
                 resetOrderNumber();
                 enableDisableSubmit();
@@ -285,7 +338,7 @@
             
             // save the SQL authorization type
             function saveAuthType() {
-                var authType = document.getElementById("authTypeSelector").value;
+                let authType = document.getElementById("authTypeSelector").value;
                 document.getElementById("loginAuthType").setAttribute("data-value", authType);
                 enableDisableAuth();
             };
@@ -295,60 +348,33 @@
                 document.getElementById("orderNumberText").value = "";
             };
 
-            // enable/disable Connect button
-/*
-            function enableDisableConnect() {
-                var myServerAddr = document.getElementById("serverAddrText").value;
-                var myDBName = document.getElementById("dbNameText").value;
-                if (myServerAddr) {// && myDBName) {
-                    //$('#connectButton').prop('disabled', false);  
-                    document.getElementById("connectButton").disabled = false;
-                } else {
-                    //$('#connectButton').prop('disabled', true);
-                    document.getElementById("connectButton").disabled = true;
-                };
-            };
-*/
             // enable/disable Submit button
             function enableDisableSubmit() {
-                var myServerAddr = document.getElementById("serverAddrText").value;
-                var myDBName = document.getElementById("dbNameText").value;
-                var orderType = document.getElementById("orderTypeSelector").value;
-                var orderNumber = document.getElementById("orderNumberText").value;
+                let myServerAddr = document.getElementById("serverAddrText").value;
+                let myDBName = document.getElementById("dbNameText").value;
+                let orderType = document.getElementById("orderTypeSelector").value;
+                let orderNumber = document.getElementById("orderNumberText").value;
 
                 if (myServerAddr && myDBName && orderType && orderNumber) {
-                    //$('#submitButton').prop('disabled', false);
                     document.getElementById("submitButton").disabled = false;
                 } else {
-                    //$('#submitButton').prop('disabled', true);
                     document.getElementById("submitButton").disabled = true;
                 };
             };
             
             // enable/disable user name/password in db connect modal
             function enableDisableAuth() {
-                var authType = document.getElementById("loginAuthType").getAttribute("data-value");
+                let authType = document.getElementById("loginAuthType").getAttribute("data-value");
 
                 if (authType == 'S') {
-//                    $('#userNameText').prop('disabled', false); 
-//                    $('#userPswdText').prop('disabled', false);
                     document.getElementById("userNameText").disabled = false;
                     document.getElementById("userPswdText").disabled = false;
                 } else {
-//                    $('#userNameText').prop('disabled', true); 
-//                    $('#userPswdText').prop('disabled', true);  
                     document.getElementById("userNameText").disabled = true;
                     document.getElementById("userPswdText").disabled = true;
                 };
             };
 
-            // resize pdf viewer if window is resized
-            function resizePDFViewer() {
-                //var width = $(window).width()-251-25;
-                var width = window.outerWidth-(251-25); 
-                //$("#viewOrderPane").width(width);
-                document.getElementById("viewOrderPane").width = width;
-            };
 
         }
 

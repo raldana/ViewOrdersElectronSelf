@@ -2,6 +2,12 @@ const path = require("path");
 const fs = require('fs');
 const sql = require('mssql');
 const { ok } = require("assert");
+
+// Module ipc for inter-process communication
+const ipcMain = require('electron').ipcMain;
+const ipcRenderer = require('electron').ipcRenderer;
+
+
 let outputFileName = "";
 let outputDataStream = "";
 let outputJobString = "";
@@ -21,9 +27,7 @@ function okToWriteFile() {
   }
 }
 
-/*
-  Loop through our SQL result set and create a string out of it
-*/
+// Loop through our SQL result set and create a string out of it
 async function createXMLString (resultSet) {
   let xmlData = "";
   let elementData;
@@ -48,6 +52,7 @@ async function createXMLString (resultSet) {
   })
 }
 
+// create the document's job header (DocOrigin job data)
 async function buildJobHeader(sessionKey, batchID, orderNo)  {
   console.log("batchfuncs.buildJobHeader()");
   let jobString;
@@ -78,6 +83,7 @@ async function buildJobHeader(sessionKey, batchID, orderNo)  {
   })
 }
 
+// get the xml text data
 async function selectXMLData(sessionKey, batchID, orderNo) {
   console.log("batchfuncs.selectXMLData() - sessionKey = " + sessionKey + " , batchID = " + batchID + ", orderNo = " + orderNo);
   let recordsets;
@@ -85,7 +91,6 @@ async function selectXMLData(sessionKey, batchID, orderNo) {
     try {
       sql.connect()
         .then(pool => {
-          // get the dat text data
           return pool.request()
               .input('ActiveSessionKey', sql.Int, sessionKey)
               .input('BatchID', sql.Int, batchID)
@@ -105,13 +110,13 @@ async function selectXMLData(sessionKey, batchID, orderNo) {
   })
 }
 
+// perform data formatting
 async function dataFormatting(sessionKey, batchID) {
   console.log("batchfuncs.dataFormatting()");
   return new Promise((resolve, reject) => {
     try {
       sql.connect()
       .then(pool =>{
-        // perform data formatting
         return pool.request()
           .input('ActiveSessionKey', sql.Int, sessionKey)
           .input('BatchID', sql.Int, batchID)
@@ -130,13 +135,13 @@ async function dataFormatting(sessionKey, batchID) {
   })
 }
 
+// perform data collection
 async function dataCollection(sessionKey, batchID) {
   console.log("batchfuncs.dataCollection() - sessionKey = " + sessionKey + ", batchID = " + batchID);
   return new Promise((resolve, reject) => {
     try {
       sql.connect()
       .then(pool => {
-        // perform data collection
         return pool.request()
           .input('ActiveSessionKey', sql.Int, sessionKey)
           .input('BatchID', sql.Int, batchID)
@@ -156,16 +161,14 @@ async function dataCollection(sessionKey, batchID) {
   })
 }
 
+// create default od job
 async function createJob(event, orderNo, orderType) {
   console.log("batchfuncs.createJob(): " + "order - " + orderNo + " , orderType " + orderType);
   batchID = 0;
-
   return new Promise((resolve, reject) => {
     try {
       sql.connect()
       .then(pool => {
-        // create default od job
-        // return pool.request()
         jobRequest = new sql.Request()
         jobRequest.input('OrderNumber', sql.VarChar(20), orderNo)
         jobRequest.input('OrderType', sql.VarChar(1), orderType)
@@ -234,16 +237,18 @@ function notifyBatchComplete (event, batchID) {
   default path - we need to modify it so that the new path is our local folder
 */
 function fixJobHeader (stringToFix) {
-  var targetString = "";
-  var fileName = "";
-  var newJobHeader = "";
-  var extension = "";
-  var arrayString = "";
-  var s = stringToFix;
+  //const remote = require('electron').remote;
+  let docOriginServer = global.sharedObj.docOriginServerAddress;
+  let targetString = "";
+  let fileName = "";
+  let newJobHeader = "";
+  let extension = "";
+  let arrayString = "";
+  let s = stringToFix;
 
   // split the job header string to an array
-  var optionsArray = s.match(/(?:[^\s"]+|"[^"]*")+/g);
-  var arrayLength = optionsArray.length;
+  let optionsArray = s.match(/(?:[^\s"]+|"[^"]*")+/g);
+  let arrayLength = optionsArray.length;
 
   // get the file name from the full target path (remove quotes around)
   for (var i = 0; i < arrayLength; i++) {
@@ -257,8 +262,9 @@ function fixJobHeader (stringToFix) {
   }
 
   // concantenate the local path + file name
-  fileName = "\\\\AZ-WIN19TEST-01\\DOUser\\Output\\PrintImages\\RemoteJobs\\" + fileName;
-  outputFileName = "\\\\AZ-WIN19TEST-01\\DOUser\\FolderMonitor\\Adhoc\\JobQueue\\" + path.basename(fileName, ".pdf") + ".xml";
+  // docOriginServer
+  fileName = "\\\\" + docOriginServer + "\\DOUser\\Output\\PrintImages\\RemoteJobs\\" + fileName;
+  outputFileName = "\\\\" + docOriginServer + "\\DOUser\\FolderMonitor\\Adhoc\\JobQueue\\" + path.basename(fileName, ".pdf") + ".xml";
   
   // now recreate the update job header string
   if (fileName) {
@@ -293,7 +299,6 @@ function fixJobHeader (stringToFix) {
 */
 function  cleanupJob(sessionKey, batchID) {
   console.log("cleanupJob(): sessionKey = " + sessionKey + " , batchID = " + batchID);
-
   try {
     sql.connect()
       .then(pool => {
@@ -310,21 +315,10 @@ function  cleanupJob(sessionKey, batchID) {
   } catch (e) {
     console.error(e)
   }
-
-/*
-  let request = new sql.Request();
-    request.input("ActiveSessionKey", sql.BigInt, sessionKey);
-    request.input("BatchID", sql.BigInt, batchID);
-    request.execute("odOrderQRunDataCleanupAP")
-      .catch(function (err) {
-        console.log(err);
-      });
-*/
 }
 
 
 function writeFileToQueue(outputPath, dataString, jobHeaderString) {
-  //console.log("batchfuncs.writeFileToQueue() outputPath = " + outputPath + "\n" + " , dataString = " + dataString + "\n" + " , jobHeaderString" + jobHeaderString)
   console.log("batchfuncs.writeFileToQueue()");
   if (outputPath && dataString && jobHeaderString) {
     var newString = jobHeaderString + dataString

@@ -35,15 +35,17 @@ button {
   padding-top: 5px;
 }
 #viewOrderPane {
-  display: box;
-  position: fixed;
+  /*display: box;*/
+  position: absolute;
   top: 0;
-  left: 251px;
+  left: 240px;
   height: 100%;
-  width: 760px;
+  width: 90%;  
 }
+/*
 #viewOrderIframe {
   position: absolute;
+  border: none;
   top: 0;
   bottom: 0;
   left: 0;
@@ -51,6 +53,22 @@ button {
   width: 100%;
   height: 100%;
 }
+*/
+
+#viewOrderIframe {
+  position: relative;
+  border: none;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  width: 90%;
+  /*resize:both;
+  overflow: auto;*/
+}
+
+
 #side-nav ul {
   list-style: none;
   padding: 20px;
@@ -71,9 +89,32 @@ button {
 }
 
 
-#myJobModal .modal-dialog
-{
-    width: 300px; /* your width */
+/* busy curtain on top of form */
+#curtain {
+  position: fixed;
+  _position: absolute;
+  z-index: 99;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  _height: expression(document.body.offsetHeight + "px");
+  background: url(curtain.png);
+  _background: url(curtain.gif);
+}
+
+/* log window (div) */
+#logWindow {
+  overflow: auto;
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  top: 5%;
+  left: 5%;
+  right: 5%;
+  bottom: 5%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 20;
 }
 
 /* Absolute Center Spinner */

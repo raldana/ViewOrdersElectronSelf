@@ -1,8 +1,8 @@
 const remote = require('electron').remote;
 const ipcRenderer = require('electron').ipcRenderer;
+const logMsgs = [];
 let isFileDone = false;
 let dbConnectState = false;
-
 
 // connect to db
 function connectToDB () {
@@ -12,36 +12,12 @@ function connectToDB () {
     
     // update the text for the db connect modal
     document.getElementById("serverAddrLabel").innerHTML = myServerAddr;
+    document.getElementById("newServerNameText").innerHTML = myServerAddr;
     
     // save to document properties
     document.getElementById("loginServerAddr").setAttribute("data-value", myServerAddr);
 };
-/*
-function testConn (config) {
-    ipcRenderer.send("consoleLog","testConn (index.js)");
-    var myStatus = document.getElementById("connStatusText");
-    loginAuthType = remote.getGlobal("sharedObj").authType;
-    if (loginAuthType == "W" || (config.user && config.password && config.server && config.database)) {
-        ipcRenderer.send('testConn', config);
-    };
-    
-    ipcRenderer.once('testConnReply', function(event, connectState) {
-        dbConnectState = connectState;
-        if (connectState == true) {
-            // change the connect status text/color
-            myStatus.style.color = "green";
-            myStatus.innerHTML = "Connected";
-            document.getElementById("connectButton").innerHTML = "Disconnect";
-        } else {
-            // change the connect status text/color
-            myStatus.style.color = "red";
-            myStatus.innerHTML = "Connect failed";
-            document.getElementById("connectButton").innerHTML = "Connect";
-        };
-    });
 
-};
-*/
 function isEmpty(obj) {
 
     // null and undefined are "empty"
@@ -72,28 +48,32 @@ function submitOrder () {
     resetViewOrderPane();
 
     // clear out any old files we have viewed first
-    var tmpFile = remote.getGlobal('sharedObj').tempFile;
+    let tmpFile = remote.getGlobal('sharedObj').tempFile;
     if (tmpFile) {
         ipcRenderer.send('deleteFile', tmpFile);
     };
     
     // get the Order Type selector's value and associated text of the option
-    var orderTypeSelector = document.getElementById("orderTypeSelector");
-    var myOrderType = orderTypeSelector.value;
-    var optionText = orderTypeSelector.options[orderTypeSelector.selectedIndex].text;
+    let orderTypeSelector = document.getElementById("orderTypeSelector");
+    let myOrderType = orderTypeSelector.value;
+    let optionText = orderTypeSelector.options[orderTypeSelector.selectedIndex].text;
     
     // get the order number
-    var myOrderNumber = document.getElementById("submitOrderNumber").getAttribute("data-value");
+    let myOrderNumber = document.getElementById("submitOrderNumber").getAttribute("data-value");
+    remote.getGlobal('sharedObj').orderNumber = myOrderNumber;
     ipcRenderer.send('consoleLog', 'Order Number ' + myOrderNumber + ' will be submitted' + '\n');
 
     // update the text for the job submitted modal
     document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]";
-    
+
     // build sql connect config object
-    var myConfig = buildConfig(); 
+    let myConfig = buildConfig(); 
     
+    // show the job submitted modal
+    //ipcRenderer.send("showJobSubmitted");
+
     // call sql stored proc to insert row to job queue/batches
-    ipcRenderer.send("consoleLog", "indexjs.submitOrder() - submitting order: " + myOrderNumber);
+    ipcRenderer.send("consoleLogThis", "indexjs.submitOrder() - submitting order: " + myOrderNumber);
     ipcRenderer.send('sendBatch', myOrderNumber, myOrderType, myConfig);
     
     // when we are notified batch is done, log it
@@ -101,44 +81,11 @@ function submitOrder () {
         ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received' + '\n');
         getDisplayFileName(myOrderNumber, myOrderType);
     });
+
 };
 
 function buildConfig () {
     return remote.getGlobal("sharedObj").sqlConfig;
-/*
-    var sqlConfig = {};
-
-    let authType = remote.getGlobal("sharedObj").authType;
-    let userName = remote.getGlobal("sharedObj").userName;
-    let passwordText = remote.getGlobal("sharedObj").userPswd;
-    let serverName = remote.getGlobal("sharedObj").serverAddress;
-    let dbName = remote.getGlobal("sharedObj").dbName;
-    let dbDriver = remote.getGlobal("sharedObj").dbDriver;
-
-    if (authType == "W") {
-            sqlConfig = {
-                driver: dbDriver,
-                server: serverName,
-                database: dbName,
-                options: {
-                    trustedConnection: true
-                }
-            };
-        
-    } else {
-        if (userName && passwordText && serverName && dbName) {
-            sqlConfig = {
-                user: userName,
-                password: passwordText,
-                server: serverName,
-                database: dbName
-            };
-
-        };
-    };
-
-    return sqlConfig;
-*/
 };
 
 function getDisplayFileName (orderNumber, orderType) {
@@ -151,8 +98,7 @@ function getDisplayFileName (orderNumber, orderType) {
         ipcRenderer.once('deleteFileReply', function(event, fileName) {
             ipcRenderer.send('watchFile', fileName);
             ipcRenderer.send('consoleLog', 'Waiting for file: ' + fileName + '\n');
-            //ipcRenderer.once('watchFileReply', function(event, fileName) {
-            ipcRenderer.on('watchFileReply', function(event, fileName) {
+            ipcRenderer.once('watchFileReply', function(event, fileName) {
                 if (isFileDone == false) {
                     isFileDone = true;
                     loadPDF(fileName);
@@ -164,29 +110,23 @@ function getDisplayFileName (orderNumber, orderType) {
 };
 
 function loadPDF(fname) {
+    ipcRenderer.send("closeJobSubmittedWindow");
     let source = fname;
     //$('#myJobModal').modal('hide');
     document.getElementById('myJobModal').style.display = "none";
-
-    //let target = 'pdf.js/web/' + require('path').basename(fname);
-    let target = 'web/' + require('path').basename(fname);
-    ipcRenderer.send("copyFile", source, target);
-    ipcRenderer.once('copyFileReply', function(event, target) {
-        var newTarget = require('path').basename(target);
-        var uri = encodeURIComponent(newTarget);
-        ipcRenderer.send("updateTempFileName", target);
-        //document.getElementById('viewOrderIframe').attr('src', 'pdf.js/web/viewer.html?file=' + uri)
-        document.getElementById('viewOrderIframe').src = (__dirname + '/web/viewer.html?file=' + uri)
-        //$('#viewOrderIframe').attr('src', 'web/viewer.html?file=' + uri);
-        document.getElementById('viewOrderIframe').style.display = 'block';
-        //$('#viewOrderIframe').show();
-    });
-
+    let uri = encodeURIComponent(source );
+    ipcRenderer.send("updateTempFileName", source);
+    document.getElementById('viewOrderIframe').src = (source)
+    document.getElementById('viewOrderIframe').style.display = 'inline-flex';
+    document.getElementById('wrapper').removeAttribute("modal-backdrop");
 };
 
 
 function resetViewOrderPane() {
-    document.getElementById('viewOrderIframe').src = '';
+    let orderFrame = document.getElementById('viewOrderIframe')
+    //orderFrame.src = '';
+    orderFrame.src = 'jobSubmitted.html';
+    orderFrame.style.display = "block";
     //document.getElementById('viewOrderIframe').style.display = "none";
 };
 
@@ -233,10 +173,6 @@ function populateDBSelector() {
         select.appendChild(el);
        // select.append(el);
     }
-
-    //$('#dbSelector').append(options);
-   // document.getElementById("dbSelector").append(options);
-   // ipcRenderer.send("consoleLog", "populateDBSelector: " + JSON.stringify(options))
 };
 
 // check if order number is valid
@@ -260,18 +196,21 @@ function checkOrderValidity(orderNumber, orderType) {
 
 // populate the server data
 function populateServerData() {
-    let servAddr = remote.getGlobal("sharedObj").serverAddress;
+    let servAddr = remote.getGlobal("sharedObj").sqlServerAddress;
     let dbName = remote.getGlobal("sharedObj").dbName;
     let userName = remote.getGlobal("sharedObj").userName;
     let userPswd = remote.getGlobal("sharedObj").userPswd;
-    if (remote.getGlobal("sharedObj").serverAddress) {
+    let formattedServer = servAddr;
+    formattedServer = formattedServer.replace(/\\\//g, "/");
+    if (remote.getGlobal("sharedObj").sqlServerAddress) {
         document.getElementById("loginServerAddr").setAttribute("data-value",servAddr);
         document.getElementById("loginDBName").setAttribute("data-value",dbName);
         document.getElementById("loginUserID").setAttribute("data-value",userName);
         document.getElementById("loginUserPswd").setAttribute("data-value",userPswd);
         document.getElementById("loginAuthType").setAttribute("data-value", "S");
 
-        document.getElementById("serverAddrText").value = servAddr;
+        document.getElementById("serverAddrText").value = formattedServer;
+        document.getElementById("newServerNameText").value = formattedServer;
         document.getElementById("dbSelector").value = dbName;
         document.getElementById("dbNameText").value = dbName;
         document.getElementById("userNameText").value = userName;
@@ -282,8 +221,18 @@ function populateServerData() {
     populateDBSelector();
 };
 
+// save iframe dimensions
+function saveFrameDimensions(frame) {
+    let myFrame = frame //document.getElementById(frame);
+    let frameHeight = myFrame.clientHeight;
+    let frameWidth = myFrame.clientWidth;
+    let frameTop = myFrame.offsetTop;
+    let frameLeft = myFrame.offsetLeft;
+    ipcRenderer.send("setFrameDimensions", frameHeight, frameWidth, frameTop, frameLeft);
+}
+
 module.exports = resetViewOrderPane;
 module.exports = buildConfig;
 module.exports = checkOrderValidity;
 module.exports = populateServerData;
-//module.exports = saveConfig;
+module.exports = saveFrameDimensions;

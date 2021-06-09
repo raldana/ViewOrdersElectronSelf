@@ -72,6 +72,7 @@ function getOutputFileName(event, orderNumber, callback) {
 
 // validate order (check if order number/type exists)
 function checkForValidOrder(event, orderNumber, orderType, config) {
+  //console.log("invoicefuncs.checkForValidOrder: orderNumber = " + orderNumber + ", orderType = " + orderType);
   var isInvoice = 0;
   var docType = '';
   var isValid = false;
@@ -91,6 +92,12 @@ function checkForValidOrder(event, orderNumber, orderType, config) {
       .execute('arInvoiceVwrGetInvTypAndTotAP', (err, results) => {
         isInvoice = results.output.IsInvoice;
         docType = results.output.Type;
+
+        // POS invoice are type = ' ' in the db, but we are looking for 'O' here. so if we get
+        // a blank, then change it to 'O' so we get a match
+        if (docType == ' ') {
+          docType = 'O';
+        }
 
         if (docType == undefined || docType == null) {
           docType = "X"
