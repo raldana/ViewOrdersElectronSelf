@@ -31,7 +31,7 @@
     "asyncawait": "^3.0.0",
     "chokidar": "^3.4.3",
     "config-js": "^1.1.14",
-    "express": "^4.17.1",
+    "express": "^4.19.2",
     "fibers": "^5.0.0",
     "msnodesqlv8": "^2.0.8",
     "mssql": "^6.2.3",
